@@ -16,13 +16,21 @@ if uploaded_file is not None:
 
     if uploaded_file.name.endswith('.csv'):
 
-        header_row = st.number_input("Header row (0-indexed)", min_value=0, value=0)
+        header_option = st.selectbox("Does the file have a header?", ["No", "Yes"])
+        if header_option == "Yes":
+            header_row = st.number_input("Header row", min_value=0, value=0)
+        else:
+            header_row = None
+
         delimiter = st.text_input("Delimiter", value=",")
 
         custom_headers = st.text_area("Custom feature names (comma-separated)", "")
 
         try:
-            df = pd.read_csv(uploaded_file, header=header_row, delimiter=delimiter)
+            if header_row==None:
+                df = pd.read_csv(uploaded_file, header=None, delimiter=delimiter)
+            else:
+                df = pd.read_csv(uploaded_file, header=header_row, delimiter=delimiter)
             
             if custom_headers:
                 custom_headers_list = [x.strip() for x in custom_headers.split(',')]
