@@ -68,6 +68,9 @@ if uploaded_file is not None:
 
 
 if uploaded_file is not None:
+
+    # ------------------------------------------- PART 3 VISUALIZATIONS ---------------------------------
+
     st.subheader('Data Visualizations')
 
     import plotly.express as px
@@ -106,3 +109,136 @@ if uploaded_file is not None:
                 st.plotly_chart(fig_scatter)
 
         st.markdown("---")
+
+    # ------------------------------------------- PART 4 CLUSTERING OR PREDICTION ---------------------------------
+    st.subheader('Clustering or prediction')
+
+    task = st.selectbox("Select a task", ["Clustering", "Prediction"])
+    
+    if task == "Clustering":
+        st.subheader('Clustering')
+        clustering_choice = st.selectbox("Select a clustering algorithm", ["K-Means", "DB-SCAN"])
+
+        if clustering_choice == "K-Means":
+
+            from sklearn.cluster import KMeans
+
+            k = st.slider("Number of clusters", min_value=2, max_value=10, value=3)
+            rs = st.number_input("Random state", value=42)
+            ni = st.selectbox("Number of initializations", ['auto', 1, 5, 10, 20])
+
+
+            kmeans = KMeans(n_clusters=k, random_state=rs, n_init=ni)
+            clusters = kmeans.fit(df)
+            labels = clusters.labels_
+            df['Cluster'] = labels
+            inertia = clusters.inertia_
+            centers = clusters.cluster_centers_
+            cluster_counts = df['Cluster'].value_counts().sort_index()
+            cluster_centers = df.groupby('Cluster').mean()
+
+            # Statistics
+            st.write("Inertia: ", inertia)
+            st.write("Cluster Labels:")
+            st.write(f"{labels}")
+            st.write("Number of data points in each cluster:")
+            st.write(cluster_counts)
+            st.write("Cluster centers (mean of features):")
+            st.write(cluster_centers)
+
+            # Visualisation
+
+            if (len(df.columns)>=2):
+                columns = st.multiselect("Select columns for Scatter Plot", df.columns, max_selections=3)
+                if len(columns) == 2:
+
+                    fig = px.scatter(df, x=columns[0], y=columns[1], color='Cluster', title='Cluster Visualization (2D)')
+                    st.plotly_chart(fig)
+
+                elif len(columns) >= 3:
+                    fig = px.scatter_3d(df, x=columns[0], y=columns[1], z=columns[2],
+                                color='Cluster', symbol='Cluster',
+                                title=f'3D Scatter Plot of Clusters (K={k})')
+                    st.plotly_chart(fig)
+        
+
+
+        elif clustering_choice == "DB-SCAN":
+            from sklearn.cluster import DBSCAN
+            epsilon = st.number_input("Epsilon", value=0.5)
+            ms = st.number_input("Minimum samples", min_value=1, value=5)
+
+            dbscan = DBSCAN(eps=epsilon, min_samples=ms)
+            clustering = dbscan.fit(df)
+            labels = clustering.labels_
+            df['Clustering'] = labels
+            st.write(dbscan)
+            st.write(labels)
+
+
+            n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+            n_noise_ = list(labels).count(-1)
+
+            st.write("Estimated number of clusters: %d" % n_clusters_)
+            st.write("Estimated number of noise points: %d" % n_noise_)
+
+
+            if (len(df.columns)>=2):
+                columns = st.multiselect("Select columns for Scatter Plot", df.columns, max_selections=3)
+                if len(columns) == 2:
+
+                    fig_2d = px.scatter(df, x=columns[0], y=columns[1], color='Clustering',
+                                            title='Cluster Visualization (2D)')
+                    st.plotly_chart(fig_2d)
+
+                elif len(columns) >= 3:
+                    
+                    fig_3d = px.scatter_3d(df, x=columns[0], y=columns[1], z=columns[2], color='Clustering',
+                                            title='3D Scatter Plot of Clusters')
+                    st.plotly_chart(fig_3d)
+
+
+    elif task == "Prediction":
+        st.subheader('Prediction')
+
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import mean_squared_error, accuracy_score
+
+
+
+        prediction_choice = st.selectbox("Select a prediction algorithm", ["Regression", "Classification"])
+
+        target_column = st.selectbox("Select target column", df.columns)
+        features = df.drop(columns=[target_column])
+        target = df[target_column]
+
+        X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+        if prediction_choice == "Regression":
+            from sklearn.linear_model import LinearRegression
+
+            model = LinearRegression()
+            model.fit(X_train, y_train)
+            predictions = model.predict(X_test)
+            mse = mean_squared_error(y_test, predictions)
+            r2 = model.score(X_test, y_test)
+
+            st.write(f"Mean Squared Error: {mse}")
+            st.write(f"R^2 Score: {r2}")
+
+            fig = px.scatter(
+            x=y_test,
+            y=predictions,
+            trendline="ols",
+            labels={'x': 'Real values', 'y': 'Predictions'},
+            title="Prediction vs Real values"
+            )
+            fig.update_traces(marker=dict(size=12, color='rgba(255,182,193, .9)'),
+                            line=dict(width=2, color='rgba(48, 210, 254, 0.8)'))
+            fig.update_layout(showlegend=True)
+            st.plotly_chart(fig)
+
+            
+
+
+
+
