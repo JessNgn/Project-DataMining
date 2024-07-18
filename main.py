@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from sklearn.impute import SimpleImputer
+from sklearn import preprocessing
+import numpy as np
 
 st.markdown("Tutor: Issam FALIH")
 st.markdown("BIA2 - Nhat-Vy Jessica NGUYEN - Kevin OP")
@@ -115,10 +117,13 @@ if uploaded_file is not None:
 
                                         if Replace_method == "None":
                                             continue
+
                                         if Replace_method == "Mean":
                                             imputer = SimpleImputer(strategy='mean')
+
                                         if Replace_method == "Median":
                                             imputer = SimpleImputer(strategy='median')
+
                                         if Replace_method == "Mode":
                                             imputer = SimpleImputer(strategy='most_frequent')
 
@@ -129,7 +134,8 @@ if uploaded_file is not None:
                                         Replace_method = st.selectbox(f"Which method do you want to use to replace the missing values inside {i} ?", ["None", "Mode"])
                                         
                                         if Replace_method == "None":
-                                            continue                                    
+                                            continue                        
+
                                         if Replace_method == "Mode":
                                             imputer = SimpleImputer(strategy='most_frequent')
                                         
@@ -160,7 +166,42 @@ if uploaded_file is not None:
                     
                 st.table(df2)
 
+        Normal_choice = st.selectbox("Do you want to normalize your data ?", ["No", "Yes"])
+
+        df_norm = df
+
+        if Normal_choice == "Yes":
+
+            Normal_method = st.selectbox(f"Which method do you want to use ?", ["Normalize", "Min-Max", "Z-score", "Log Scaling"])
+            features = st.multiselect("Which feature do you want to select ?", df.select_dtypes(include=['number']).columns)
+
+            if not features: 
+
+                st.write("You didn't select any feature yet.")
+            
+            else:
+
+                if Normal_method == "Min-Max":
+                    scaler = preprocessing.MinMaxScaler()
+                    df_norm[features] = scaler.fit_transform(df_norm[features])
+
+                if Normal_method == "Z-score":
+                    scaler = preprocessing.StandardScaler()
+                    df_norm[features] = scaler.fit_transform(df_norm[features])
+
+                if Normal_method == "Normalize":
+                    df_norm[features] = preprocessing.normalize(df_norm[features])    
+
+                if Normal_method == "Log Scaling":
+                    df_norm[features] = np.log(df_norm[features]) 
+
+            st.write(df_norm)
+
+        else:
+
+            st.write(df_norm)
+
     except Exception as e:
-        st.error(f"Error loading CSV file: Try to change the File Encoding")
+        st.error(f"Error loading CSV file: Try to change the File Encoding : str{e}")
 else:
     st.write("Please upload a CSV file.")
