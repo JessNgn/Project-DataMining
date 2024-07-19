@@ -48,6 +48,13 @@ To configure your development environment and install the required dependencies,
 - Visualize the results
 
 
+***Dataset given : Parkinsons_updrs Data***
+
+*By importing this dataset on our application, we manage to analyse different Parkinson's disease voice measurements.*
+
+*To resume, we think that this dataset could be great for prediction, and so to discover early stages of the parkinsons desease.*
+
+
 ## Contributions
 
 - Jessica NGUYEN - @JessNgn - *Branch: 'Jess'*
