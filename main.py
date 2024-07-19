@@ -1,216 +1,283 @@
+#! /bin/python
+# -*- coding: utf-8 -*-
+#
+# main.py
+#
+
+__authors__ = "Nhat-Vy Jessica NGUYEN - Kévin OP"
+__copyright__ = "Copyright 2024, DataMiningProject 2024"
+__credits__ = ["Nhat-Vy Jessica NGUYEN - Kévin OP"]
+__version__ = "0.0.1"
+__maintainers__ = "Nhat-Vy Jessica NGUYEN -  Kévin OP"
+__emails__ = "nhat-vy-jessica.nguyen@efrei.net - kevin.op@efrei.net"
+__status__ = "Research code"
+
+# ----------------------------------------------- Librairies  ---------------------------------------------
+
 import streamlit as st
 import pandas as pd
+import numpy as np
+import plotly.express as px
+import matplotlib.pyplot as plt
 from sklearn.impute import SimpleImputer
 from sklearn import preprocessing
-import numpy as np
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.neighbors import NearestNeighbors
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report
 
-st.markdown("Tutor: Issam FALIH")
-st.markdown("BIA2 - Nhat-Vy Jessica NGUYEN - Kevin OP")
 
-st.title("Data Mining - Project")
 
-uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
+# ---------------------------------- Side Bar / Presentattion -------------------------------------
 
-if uploaded_file is not None:
+st.sidebar.title("Data Mining - Project")
 
-    try:
-        
-        header_option = st.selectbox("Does the file have a header?", ["Yes", "No"])
+st.sidebar.info("Nhat-Vy Jessica NGUYEN - Kevin OP          BIA2")
+st.sidebar.info("Tutor: Issam FALIH")
 
-        if header_option == "Yes":
+st.sidebar.markdown("---")
 
-            header_row = st.number_input("Header row", min_value=0, value=0)
+st.sidebar.markdown('<a href="mailto:nhat-vy-jessica.nguyen@efrei.net" style="color: #ADD8E6; text-decoration: none;">:e-mail: nhat-vy-jessica.nguyen@efrei.net</a>', unsafe_allow_html=True)
+st.sidebar.markdown('<a href="mailto:kevin.op@efrei.net" style="color: #ADD8E6; text-decoration: none;">:e-mail: kevin.op@efrei.net</a>', unsafe_allow_html=True)
 
-        else:
+st.sidebar.markdown("---")
 
-            header_row = None
+st.sidebar.markdown('<a href="https://github.com/JessNgn/Project-DataMining" style="color: #ADD8E6; text-decoration: none;">:link: GitHub</a>', unsafe_allow_html=True)
 
-        delimiter = st.text_input("Delimiter", value=",")
 
-        custom_headers = st.text_area("Custom feature names (comma-separated)", "").strip()
-        custom_headers_list = [x.strip() for x in custom_headers.split(',')] if custom_headers else None
 
-        encoding = st.selectbox("File Encoding", ['utf-8', 'latin1', 'iso-8859-1'])
+# -------------------------------------------- Pages ----------------------------------------------
 
-        if header_option == "Yes":
+tab, tab1, tab2= st.tabs(["Data", "Visualizations", "Clustering & Predictions"])
 
-            df = pd.read_csv(uploaded_file, header=header_row, delimiter=delimiter, encoding=encoding)
-        else:
-            df = pd.read_csv(uploaded_file, header=None, delimiter=delimiter, encoding=encoding)
-            df.columns = [f"Column {i}" for i in range(len(df.columns))]
-        
-        if custom_headers_list:
+with tab:
 
-            if len(custom_headers_list) == len(df.columns):
+    st.title("Data Mining - Project")
 
-                df.columns = custom_headers_list
+    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 
-            else:
-                
-                st.warning("The number of custom feature names does not match the number of columns in the CSV.")
-        
-        st.success("File loaded successfully!")
+    if uploaded_file is not None:
 
-        st.write("")
-        st.write("Let's check if the dataset has been loaded successfully")
-
-        st.write(df)
-
-        nbRows = df.shape[0]
-        st.write("There is " + str(nbRows) + " rows")
-
-        nbColumns = df.shape[1]
-        st.write("There is " + str(nbColumns) + " columns")
-
-        st.write(df)
-
-        if (not df.isnull().any(axis=0).any()) and (not df.isnull().any(axis=1).any()):
+        try:
             
-            st.subheader("There is not a single missing value inside your data.")
+            header_option = st.selectbox("Does the file have a header?", ["Yes", "No"])
 
-        else:
+            if header_option == "Yes":
+                header_row = st.number_input("Header row", min_value=0, value=0)
+            else:
+                header_row = None
+        
+            if header_option == "No":
+                header_row = None
 
-            st.subheader("There are some missing values inside your data.")
+            delimiter = st.text_input("Delimiter", value=",")
 
-            NaN_choice = st.selectbox("Do you want to delete the empty rows and columns ?", ["No", "Yes"])
+            custom_headers = st.text_area("Custom feature names (comma-separated)", "").strip()
+            custom_headers_list = [x.strip() for x in custom_headers.split(',')] if custom_headers else None
 
-            if NaN_choice == "Yes":
+            encoding = st.selectbox("File Encoding", ['utf-8', 'latin1', 'iso-8859-1'])
 
-                df = df.dropna(how='all', axis=0)
-                df = df.dropna(how='all', axis=1)
+            if header_option == "Yes":
 
-                st.write(df)
+                df = pd.read_csv(uploaded_file, header=header_row, delimiter=delimiter, encoding=encoding)
+            else:
+                df = pd.read_csv(uploaded_file, header=None, delimiter=delimiter, encoding=encoding)
+                df.columns = [f"Column {i}" for i in range(len(df.columns))]
+            
+            if custom_headers_list:
 
-                NaN_option = st.selectbox("Do you want to delete some columns ?", ["No", "Yes"])
+                if len(custom_headers_list) == len(df.columns):
 
-                if NaN_option == "Yes":
-
-                    df2 = pd.DataFrame({
-                        "Variable": df.columns,
-                        "Number of Missing values": [df[i].isna().sum() for i in df.columns],
-                        "Percentage of Missing values": [df[i].isna().sum() / len(df) * 100 for i in df.columns]
-                    })
-
-                    NaN_threshold = st.number_input("Level of thresold for missing values ?")
-                    df2 = df2[df2["Percentage of Missing values"] <= NaN_threshold] 
-                    st.table(df2)
-
-                    NaN_replace = st.selectbox("Do you want to replace the missing values ?", ["No", "Yes"])
-
-                    if NaN_replace == "Yes":
-
-                        for i in df.columns:
-
-                            if df[i].isnull().any():
-
-                                st.subheader(f"{i}")
-
-                                col1, col2 = st.columns(2)
-
-                                with col1:
-                                    st.write(f"Type: {df[i].dtype}")
-
-                                with col2:
-
-                                    if df[i].dtype != "object":                                    
-
-                                        Replace_method = st.selectbox(f"Which method do you want to use to replace the missing values inside {i} ?", ["None", "Mean", "Median", "Mode"])
-
-                                        if Replace_method == "None":
-                                            continue
-
-                                        if Replace_method == "Mean":
-                                            imputer = SimpleImputer(strategy='mean')
-
-                                        if Replace_method == "Median":
-                                            imputer = SimpleImputer(strategy='median')
-
-                                        if Replace_method == "Mode":
-                                            imputer = SimpleImputer(strategy='most_frequent')
-
-                                        df[[i]] = imputer.fit_transform(df[[i]])
-                                    
-                                    else:
-
-                                        Replace_method = st.selectbox(f"Which method do you want to use to replace the missing values inside {i} ?", ["None", "Mode"])
-                                        
-                                        if Replace_method == "None":
-                                            continue                        
-
-                                        if Replace_method == "Mode":
-                                            imputer = SimpleImputer(strategy='most_frequent')
-                                        
-                                        df[[i]] = imputer.fit_transform(df[[i]])
-
-                            else:
-
-                                st.write(f"There is no missing value inside {i}")
-                        
-                        st.table(df)
+                    df.columns = custom_headers_list
 
                 else:
+                    
+                    st.warning("The number of custom feature names does not match the number of columns in the CSV.")
+            
+            st.success("File loaded successfully!")
 
+            st.write("")
+            st.write("Let's check if the dataset has been loaded successfully")
+
+            st.write(df)
+
+            nbRows = df.shape[0]
+            st.write("There is " + str(nbRows) + " rows")
+
+            nbColumns = df.shape[1]
+            st.write("There is " + str(nbColumns) + " columns")
+
+            st.write(df)
+
+            if (not df.isnull().any(axis=0).any()) and (not df.isnull().any(axis=1).any()):
+                
+                st.subheader("There is not a single missing value inside your data.")
+
+            else:
+
+                st.subheader("There are some missing values inside your data.")
+
+                NaN_choice = st.selectbox("Do you want to delete the empty rows and columns ?", ["No", "Yes"])
+
+                if NaN_choice == "Yes":
+
+                    df = df.dropna(how='all', axis=0)
+                    df = df.dropna(how='all', axis=1)
+
+                    st.write(df)
+
+                    NaN_option = st.selectbox("Do you want to delete some columns ?", ["No", "Yes"])
+
+                    if NaN_option == "Yes":
+
+                        df2 = pd.DataFrame({
+                            "Variable": df.columns,
+                            "Number of Missing values": [df[i].isna().sum() for i in df.columns],
+                            "Percentage of Missing values": [df[i].isna().sum() / len(df) * 100 for i in df.columns]
+                        })
+
+                        NaN_threshold = st.number_input("Level of thresold for missing values ?")
+                        df2 = df2[df2["Percentage of Missing values"] <= NaN_threshold] 
+                        st.table(df2)
+
+                        NaN_replace = st.selectbox("Do you want to replace the missing values ?", ["No", "Yes"])
+
+                        if NaN_replace == "Yes":
+
+                            for i in df.columns:
+
+                                if df[i].isnull().any():
+
+                                    st.subheader(f"{i}")
+
+                                    col1, col2 = st.columns(2)
+
+                                    with col1:
+                                        st.write(f"Type: {df[i].dtype}")
+
+                                    with col2:
+
+                                        if df[i].dtype != "object":                                    
+
+                                            Replace_method = st.selectbox(f"Which method do you want to use to replace the missing values inside {i} ?", ["None", "Mean", "Median", "Mode"])
+
+                                            if Replace_method == "None":
+                                                continue
+
+                                            if Replace_method == "Mean":
+                                                imputer = SimpleImputer(strategy='mean')
+
+                                            if Replace_method == "Median":
+                                                imputer = SimpleImputer(strategy='median')
+
+                                            if Replace_method == "Mode":
+                                                imputer = SimpleImputer(strategy='most_frequent')
+
+                                            df[[i]] = imputer.fit_transform(df[[i]])
+                                        
+                                        else:
+
+                                            Replace_method = st.selectbox(f"Which method do you want to use to replace the missing values inside {i} ?", ["None", "Mode"])
+                                            
+                                            if Replace_method == "None":
+                                                continue                        
+
+                                            if Replace_method == "Mode":
+                                                imputer = SimpleImputer(strategy='most_frequent')
+                                            
+                                            df[[i]] = imputer.fit_transform(df[[i]])
+
+                                else:
+
+                                    st.write(f"There is no missing value inside {i}")
+                            
+                            st.table(df)
+
+                    else:
+
+                        df2 = pd.DataFrame({
+                            "Variable": df.columns,
+                            "Number of Missing values": [df[i].isna().sum() for i in df.columns],
+                            "Percentage of Missing values": [df[i].isna().sum() / len(df) * 100 for i in df.columns]
+                        })
+
+                        st.table(df2)
+                
+                else:
                     df2 = pd.DataFrame({
                         "Variable": df.columns,
                         "Number of Missing values": [df[i].isna().sum() for i in df.columns],
                         "Percentage of Missing values": [df[i].isna().sum() / len(df) * 100 for i in df.columns]
                     })
-
+                        
                     st.table(df2)
-            
+
+            Normal_choice = st.selectbox("Do you want to normalize your data ?", ["No", "Yes"])
+
+            df_norm = df
+
+            if Normal_choice == "Yes":
+                
+                categorical_features = df.select_dtypes(include=['object']).columns
+                label = preprocessing.LabelEncoder()
+                for col in categorical_features:
+                    df_norm[col] = label.fit_transform(df_norm[col].astype(str))
+
+                    mapping = dict(zip(label.classes_, label.transform(label.classes_)))
+                    st.write(f"Mapping for {col}:")
+                    mapping_df = pd.DataFrame(list(mapping.items()), columns=['Original', 'Encoded'])
+                    st.table(mapping_df.head(5))
+                
+
+                Normal_method = st.selectbox(f"Which method do you want to use ?", ["Normalize", "Min-Max", "Z-score", "Log Scaling"])
+                features = st.multiselect("Which feature do you want to select ?", df.select_dtypes(include=['number']).columns)
+
+                if not features: 
+
+                    st.write("You didn't select any feature yet.")
+                
+                else:
+
+                    if Normal_method == "Min-Max":
+                        scaler = preprocessing.MinMaxScaler()
+                        df_norm[features] = scaler.fit_transform(df_norm[features])
+
+                    if Normal_method == "Z-score":
+                        scaler = preprocessing.StandardScaler()
+                        df_norm[features] = scaler.fit_transform(df_norm[features])
+
+                    if Normal_method == "Normalize":
+                        df_norm[features] = preprocessing.normalize(df_norm[features])    
+
+                    if Normal_method == "Log Scaling":
+                        df_norm[features] = np.log(df_norm[features]) 
+
+                st.write(df_norm)
+                st.session_state.df_norm = df
+
             else:
-                df2 = pd.DataFrame({
-                    "Variable": df.columns,
-                    "Number of Missing values": [df[i].isna().sum() for i in df.columns],
-                    "Percentage of Missing values": [df[i].isna().sum() / len(df) * 100 for i in df.columns]
-                })
-                    
-                st.table(df2)
 
-        Normal_choice = st.selectbox("Do you want to normalize your data ?", ["No", "Yes"])
+                st.write(df_norm)
+                st.session_state.df_norm = df
 
-        df_norm = df
+        except Exception as e:
+            st.error(f"Error loading CSV file: Try to change the File Encoding : str{e}")
+    else:
+        st.write("Please upload a CSV file.")
 
-        if Normal_choice == "Yes":
 
-            Normal_method = st.selectbox(f"Which method do you want to use ?", ["Normalize", "Min-Max", "Z-score", "Log Scaling"])
-            features = st.multiselect("Which feature do you want to select ?", df.select_dtypes(include=['number']).columns)
-
-            if not features: 
-
-                st.write("You didn't select any feature yet.")
+with tab1 :
             
-            else:
-
-                if Normal_method == "Min-Max":
-                    scaler = preprocessing.MinMaxScaler()
-                    df_norm[features] = scaler.fit_transform(df_norm[features])
-
-                if Normal_method == "Z-score":
-                    scaler = preprocessing.StandardScaler()
-                    df_norm[features] = scaler.fit_transform(df_norm[features])
-
-                if Normal_method == "Normalize":
-                    df_norm[features] = preprocessing.normalize(df_norm[features])    
-
-                if Normal_method == "Log Scaling":
-                    df_norm[features] = np.log(df_norm[features]) 
-
-            st.write(df_norm)
-
-        else:
-
-            st.write(df_norm)
-
-
-
-        # ------------------------------------------- PART 3 VISUALIZATIONS ---------------------------------
+    if uploaded_file is not None:
+        # ------------------------------------------- VISUALIZATIONS ---------------------------------
         
-        df = df_norm
-        
-        st.subheader('Data Visualizations')
+        if 'df_norm' in st.session_state:
+            df = st.session_state.df_norm
 
-        import plotly.express as px
+        st.header('Data Visualizations')
 
         selected_column = st.selectbox("Select a column to visualize", df.columns)
 
@@ -235,7 +302,8 @@ if uploaded_file is not None:
             st.plotly_chart(fig_violin)
 
             # Pie chart
-            fig_pie = px.pie(value_counts, names=selected_column, values='count', title=f'Pie Chart of {selected_column}')
+            top_values = value_counts.head(10)
+            fig_pie = px.pie(top_values, names=selected_column, values='count', title=f'Pie Chart of {selected_column} (top values)')
             st.plotly_chart(fig_pie)
             
             if (len(df.columns)>=2):
@@ -247,8 +315,13 @@ if uploaded_file is not None:
 
             st.markdown("---")
 
-        # ------------------------------------------- PART 4 CLUSTERING OR PREDICTION ---------------------------------
-        st.subheader('Clustering or prediction')
+
+
+with tab2 :
+            
+    if uploaded_file is not None:
+        # -------------------------------------------- CLUSTERING OR PREDICTION ---------------------------------
+        st.header('Clustering or prediction')
 
         task = st.selectbox("Select a task", ["Clustering", "Prediction"])
         
@@ -258,12 +331,9 @@ if uploaded_file is not None:
 
             if clustering_choice == "K-Means":
 
-                from sklearn.cluster import KMeans
-
                 k = st.slider("Number of clusters", min_value=2, max_value=10, value=3)
                 rs = st.number_input("Random state", value=42)
                 ni = st.selectbox("Number of initializations", ['auto', 1, 5, 10, 20])
-
 
                 kmeans = KMeans(n_clusters=k, random_state=rs, n_init=ni)
                 clusters = kmeans.fit(df)
@@ -286,7 +356,7 @@ if uploaded_file is not None:
                 # Visualisation
 
                 if (len(df.columns)>=2):
-                    columns = st.multiselect("Select columns for Scatter Plot", df.columns, max_selections=3)
+                    columns = st.multiselect("Select columns for Visualization", df.columns, max_selections=3)
                     if len(columns) == 2:
 
                         fig = px.scatter(df, x=columns[0], y=columns[1], color='Cluster', title='Cluster Visualization (2D)')
@@ -301,7 +371,18 @@ if uploaded_file is not None:
 
 
             elif clustering_choice == "DB-SCAN":
-                from sklearn.cluster import DBSCAN
+
+                nbrs = NearestNeighbors(n_neighbors = 5).fit(df)
+                neigh_dist, neigh_ind = nbrs.kneighbors(df)
+                sort_neigh_dist = np.sort(neigh_dist, axis = 0)
+                k_dist = sort_neigh_dist[:, 4]
+                
+                fig, ax = plt.subplots()
+                ax.plot(k_dist)
+                ax.set_xlabel('Points sorted by distance')
+                ax.set_ylabel('5th Nearest Neighbor Distance')
+                st.pyplot(fig)
+
                 epsilon = st.number_input("Epsilon", value=0.5)
                 ms = st.number_input("Minimum samples", min_value=1, value=5)
 
@@ -310,7 +391,7 @@ if uploaded_file is not None:
                 labels = clustering.labels_
                 df['Clustering'] = labels
                 st.write(dbscan)
-                st.write(labels)
+                st.write(f"{labels}")
 
 
                 n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
@@ -321,7 +402,7 @@ if uploaded_file is not None:
 
 
                 if (len(df.columns)>=2):
-                    columns = st.multiselect("Select columns for Scatter Plot", df.columns, max_selections=3)
+                    columns = st.multiselect("Select columns for visualization", df.columns, max_selections=3)
                     if len(columns) == 2:
 
                         fig_2d = px.scatter(df, x=columns[0], y=columns[1], color='Clustering',
@@ -338,11 +419,6 @@ if uploaded_file is not None:
         elif task == "Prediction":
             st.subheader('Prediction')
 
-            from sklearn.model_selection import train_test_split
-            from sklearn.metrics import mean_squared_error, accuracy_score
-
-
-
             prediction_choice = st.selectbox("Select a prediction algorithm", ["Regression", "Classification"])
 
             target_column = st.selectbox("Select target column", df.columns)
@@ -350,9 +426,9 @@ if uploaded_file is not None:
             target = df[target_column]
 
             X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-            if prediction_choice == "Regression":
-                from sklearn.linear_model import LinearRegression
 
+            if prediction_choice == "Regression":
+                
                 model = LinearRegression()
                 model.fit(X_train, y_train)
                 predictions = model.predict(X_test)
@@ -374,13 +450,32 @@ if uploaded_file is not None:
                 fig.update_layout(showlegend=True)
                 st.plotly_chart(fig)
 
-    except Exception as e:
-        st.error(f"Error loading CSV file: Try to change the File Encoding : str{e}")
-else:
-    st.write("Please upload a CSV file.")
 
+            '''
+            if prediction_choice == "Classification":
+            
+                max_depth = st.slider("Max depth of the trees", min_value=1, max_value=20, value=5)
+                n_estimators = st.slider("Number of trees", min_value=10, max_value=200, value=100)
+                RandomForest = RandomForestClassifier(max_depth=max_depth, n_estimators=n_estimators, random_state=42)
 
+                RandomForest.fit(X_train, y_train)
+                predictions = RandomForest.predict(X_test)
 
+                st.write("Classification Report")
+                st.text(classification_report(y_test, predictions))
 
+                results = pd.DataFrame({
+                    'Real values': y_test,
+                    'Predictions': predictions
+                })
 
+                fig = px.scatter(
+                    results,
+                    x='Real values',
+                    y='Predictions',
+                    title="Prediction vs Real values"
+                )
 
+                st.plotly_chart(fig)
+
+                '''
