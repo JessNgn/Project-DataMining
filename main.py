@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from sklearn.impute import SimpleImputer
 from sklearn import preprocessing
 from sklearn.cluster import KMeans, DBSCAN
+from scipy.spatial.distance import cdist
 from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
@@ -102,8 +103,6 @@ with tab:
 
             st.write("")
             st.write("Let's check if the dataset has been loaded successfully")
-
-            st.write(df)
 
             nbRows = df.shape[0]
             st.write("There is " + str(nbRows) + " rows")
@@ -332,6 +331,27 @@ with tab2 :
 
             if clustering_choice == "K-Means":
 
+                distortions = []
+                inertias = []
+                mapping1 = {}
+                mapping2 = {}
+                k_test = range(1, 10)
+
+                for i in k_test:
+                    k_test_model = KMeans(n_clusters=i).fit(df)
+                    distortions.append(sum(np.min(cdist(df, k_test_model.cluster_centers_, 'euclidean'), axis=1)) / df.shape[0])
+                    inertias.append(k_test_model.inertia_)
+
+                    mapping1[i] = sum(np.min(cdist(df, k_test_model.cluster_centers_, 'euclidean'), axis=1)) / df.shape[0]
+                    mapping2[i] = k_test_model.inertia_
+
+                fig, ax = plt.subplots()
+                ax.plot(k_test, distortions, 'bx-')
+                ax.set_xlabel('k')
+                ax.set_ylabel('Distortion')
+                ax.set_title('The Elbow Method showing the optimal k')
+                st.pyplot(fig)
+
                 k = st.slider("Number of clusters", min_value=2, max_value=10, value=3)
                 rs = st.number_input("Random state", value=42)
                 ni = st.selectbox("Number of initializations", ['auto', 1, 5, 10, 20])
@@ -464,7 +484,7 @@ with tab2 :
 
                 if prediction_method == "KNN":
 
-                    nbrs = st.slider("Select the number of neighbors", min_value=1, max_value=10, value=3)
+                    nbrs = st.slider("Select the number of neighbors", min_value=1, max_value=50, value=5)
                     classifier = KNeighborsClassifier(n_neighbors=nbrs)
                     classifier.fit(X_train, y_train)
 
@@ -491,7 +511,8 @@ with tab2 :
                     results,
                     x='Real values',
                     y='Predictions',
-                    color='Predictions',
+                    trendline="ols",
+                    labels={'x': 'Real values', 'y': 'Predictions'},
                     title="Prediction vs Real values"
                 )
                 fig.update_traces(marker=dict(size=12, color='rgba(255,182,193, .9)'),
